@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -30,45 +29,46 @@ const Index = () => {
 
     setIsDeploying(true);
     setDeploymentStatus("deploying");
-    setLogs([]);
+    setLogs(["🚀 Starting deployment..."]);
 
     try {
-      // Simulate deployment process with logs
-      const simulatedLogs = [
-        "🚀 Starting deployment...",
-        `📂 Cloning repository: ${repoUrl}`,
-        "✅ Repository cloned successfully",
-        "🔌 Connecting to EC2 instance...",
-        "✅ SSH connection established",
-        deploymentType === "docker" 
-          ? "🐳 Building Docker image..." 
-          : "📁 Preparing static files...",
-        deploymentType === "docker"
-          ? "🏗️ Running docker build ."
-          : "📋 Copying files to /var/www/html",
-        deploymentType === "docker"
-          ? "🚀 Starting Docker container..."
-          : "🌐 Configuring web server...",
-        "✅ Deployment completed successfully!",
-        "🎉 Your application is now live!"
-      ];
-
-      for (let i = 0; i < simulatedLogs.length; i++) {
-        await new Promise(resolve => setTimeout(resolve, Math.random() * 1000 + 500));
-        setLogs(prev => [...prev, simulatedLogs[i]]);
-      }
-
-      setDeploymentStatus("success");
-      toast({
-        title: "Deployment Successful! 🎉",
-        description: "Your application has been deployed successfully.",
+      const response = await fetch("http://35.173.213.192:3001/deploy", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ repoUrl, type: deploymentType }),
       });
-    } catch (error) {
+
+      const result = await response.json();
+
+      if (result.status === "success") {
+        const lines = result.log.split("\n");
+        for (let line of lines) {
+          setLogs((prev) => [...prev, line]);
+          await new Promise((r) => setTimeout(r, 200));
+        }
+
+        setDeploymentStatus("success");
+        toast({
+          title: "Deployment Successful! 🎉",
+          description: "Your application has been deployed successfully.",
+        });
+      } else {
+        setLogs([`❌ Deployment failed: ${result.error}`]);
+        setDeploymentStatus("error");
+        toast({
+          title: "Deployment Failed",
+          description: result.error,
+          variant: "destructive",
+        });
+      }
+    } catch (error: any) {
+      setLogs([`❌ Error: ${error.message}`]);
       setDeploymentStatus("error");
-      setLogs(prev => [...prev, "❌ Deployment failed: " + (error as Error).message]);
       toast({
         title: "Deployment Failed",
-        description: "There was an error during deployment. Check the logs for details.",
+        description: "Could not connect to backend.",
         variant: "destructive",
       });
     } finally {
